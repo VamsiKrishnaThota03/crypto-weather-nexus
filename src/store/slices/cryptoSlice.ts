@@ -8,7 +8,10 @@ interface CryptoData {
   current_price: number;
   price_change_percentage_24h: number;
   market_cap: number;
+  market_cap_rank: number;
   image: string;
+  circulating_supply: number;
+  total_supply: number;
 }
 
 interface CryptoState {
@@ -39,7 +42,10 @@ export const fetchCryptoData = createAsyncThunk(
           current_price: crypto.current_price,
           price_change_percentage_24h: crypto.price_change_percentage_24h,
           market_cap: crypto.market_cap,
+          market_cap_rank: crypto.market_cap_rank,
           image: crypto.image,
+          circulating_supply: crypto.circulating_supply,
+          total_supply: crypto.total_supply,
         };
         return acc;
       }, {});

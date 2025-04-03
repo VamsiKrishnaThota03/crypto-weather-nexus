@@ -104,7 +104,7 @@ export default function CryptoDetail() {
             <div className="space-y-4">
               <div>
                 <p className="text-gray-400">Rank</p>
-                <p className="text-white">#{crypto.market_cap}</p>
+                <p className="text-white">#{crypto.market_cap_rank}</p>
               </div>
               <div>
                 <p className="text-gray-400">Circulating Supply</p>
