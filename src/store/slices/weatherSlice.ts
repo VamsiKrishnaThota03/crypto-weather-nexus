@@ -7,6 +7,20 @@ interface WeatherData {
   humidity: number;
   conditions: string;
   timestamp: number;
+  main: {
+    temp: number;
+    feels_like: number;
+    humidity: number;
+    pressure: number;
+  };
+  wind: {
+    speed: number;
+  };
+  weather: Array<{
+    main: string;
+    description: string;
+  }>;
+  dt: number;
 }
 
 interface WeatherState {
@@ -35,6 +49,10 @@ export const fetchWeatherData = createAsyncThunk(
           humidity: response.data.main.humidity,
           conditions: response.data.weather[0].main,
           timestamp: Date.now(),
+          main: response.data.main,
+          wind: response.data.wind,
+          weather: response.data.weather,
+          dt: response.data.dt,
         };
       })
     );

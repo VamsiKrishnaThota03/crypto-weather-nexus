@@ -32,32 +32,54 @@ export const fetchCryptoData = createAsyncThunk(
   'crypto/fetchCryptoData',
   async (cryptos: string[], { rejectWithValue }) => {
     try {
-      const response = await axios.get(`/api/crypto?ids=${cryptos.join(',')}`);
+      // Decode any URL-encoded IDs
+      const decodedCryptos = cryptos.map(crypto => decodeURIComponent(crypto));
+      const response = await axios.get(`/api/crypto?ids=${decodedCryptos.join(',')}`);
       
+      if (!Array.isArray(response.data)) {
+        throw new Error('Invalid response format from API');
+      }
+
       const data = response.data.reduce((acc: Record<string, CryptoData>, crypto: any) => {
-        acc[crypto.id] = {
-          id: crypto.id,
-          name: crypto.name,
-          symbol: crypto.symbol.toUpperCase(),
-          current_price: crypto.current_price,
-          price_change_percentage_24h: crypto.price_change_percentage_24h,
-          market_cap: crypto.market_cap,
-          market_cap_rank: crypto.market_cap_rank,
-          image: crypto.image,
-          circulating_supply: crypto.circulating_supply,
-          total_supply: crypto.total_supply,
-        };
+        try {
+          if (!crypto || !crypto.id) {
+            console.error('Invalid crypto data received:', crypto);
+            return acc;
+          }
+          
+          acc[crypto.id] = {
+            id: crypto.id,
+            name: crypto.name || 'Unknown',
+            symbol: (crypto.symbol || '').toUpperCase(),
+            current_price: crypto.current_price || 0,
+            price_change_percentage_24h: crypto.price_change_percentage_24h || 0,
+            market_cap: crypto.market_cap || 0,
+            market_cap_rank: crypto.market_cap_rank || 0,
+            image: crypto.image || '',
+            circulating_supply: crypto.circulating_supply || 0,
+            total_supply: crypto.total_supply || 0,
+          };
+        } catch (error) {
+          console.error(`Error processing crypto data for ${crypto?.id || 'unknown'}:`, error);
+        }
         return acc;
       }, {});
 
+      if (Object.keys(data).length === 0) {
+        throw new Error('No valid crypto data received');
+      }
+
       return { data, timestamp: Date.now() };
     } catch (error) {
+      console.error('Error fetching crypto data:', error);
       if (axios.isAxiosError(error)) {
         return rejectWithValue(
           error.response?.data?.error || 'Failed to fetch crypto data'
         );
       }
-      return rejectWithValue('An unexpected error occurred');
+      return rejectWithValue(
+        error instanceof Error ? error.message : 'An unexpected error occurred'
+      );
     }
   }
 );
@@ -68,8 +90,9 @@ const cryptoSlice = createSlice({
   reducers: {
     updateCryptoPrice: (state, action) => {
       const { id, price } = action.payload;
-      if (state.data[id]) {
-        state.data[id].current_price = price;
+      const decodedId = decodeURIComponent(id);
+      if (state.data[decodedId]) {
+        state.data[decodedId].current_price = price;
       }
     },
   },

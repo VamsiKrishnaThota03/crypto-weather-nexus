@@ -18,13 +18,16 @@ export default function CryptoDetail() {
   const dispatch = useAppDispatch();
   const { data, loading, error } = useAppSelector((state) => state.crypto);
   const { cryptos: favoriteCryptos } = useAppSelector((state) => state.favorites);
-  const crypto = data[id as string];
+  
+  // Decode the crypto ID from the URL
+  const decodedId = decodeURIComponent(id as string);
+  const crypto = data[decodedId];
 
   useEffect(() => {
-    if (id) {
-      dispatch(fetchCryptoData([id as string]));
+    if (decodedId) {
+      dispatch(fetchCryptoData([decodedId]));
     }
-  }, [dispatch, id]);
+  }, [dispatch, decodedId]);
 
   if (loading) {
     return (
@@ -48,7 +51,7 @@ export default function CryptoDetail() {
       <div className="min-h-screen bg-gray-900 p-8">
         <div className="max-w-4xl mx-auto">
           <div className="text-red-400">
-            {error || 'Cryptocurrency data not found'}
+            {error || `Cryptocurrency data not available for ${decodedId}`}
           </div>
         </div>
       </div>
@@ -66,11 +69,11 @@ export default function CryptoDetail() {
             </p>
           </div>
           <button
-            onClick={() => dispatch(toggleFavoriteCrypto(crypto.id))}
+            onClick={() => dispatch(toggleFavoriteCrypto(decodedId))}
             className="text-gray-400 hover:text-red-500 transition-colors"
-            aria-label={favoriteCryptos.includes(crypto.id) ? "Remove from favorites" : "Add to favorites"}
+            aria-label={favoriteCryptos.includes(decodedId) ? "Remove from favorites" : "Add to favorites"}
           >
-            {favoriteCryptos.includes(crypto.id) ? (
+            {favoriteCryptos.includes(decodedId) ? (
               <HeartIconSolid className="h-8 w-8 text-red-500" />
             ) : (
               <HeartIcon className="h-8 w-8" />
@@ -108,11 +111,11 @@ export default function CryptoDetail() {
               </div>
               <div>
                 <p className="text-gray-400">Circulating Supply</p>
-                <p className="text-white">{formatNumber(crypto.circulating_supply)} {crypto.symbol.toUpperCase()}</p>
+                <p className="text-white">{formatNumber(crypto.circulating_supply)} {crypto.symbol}</p>
               </div>
               <div>
                 <p className="text-gray-400">Total Supply</p>
-                <p className="text-white">{formatNumber(crypto.total_supply)} {crypto.symbol.toUpperCase()}</p>
+                <p className="text-white">{formatNumber(crypto.total_supply)} {crypto.symbol}</p>
               </div>
             </div>
           </div>
