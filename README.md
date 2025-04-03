@@ -1,36 +1,135 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# CryptoWeather Nexus
+
+A modern web application that combines cryptocurrency market data with weather information, providing a unique dashboard experience.
+
+## Features
+
+### Cryptocurrency Section
+- Real-time price updates for major cryptocurrencies
+- Price change indicators with color coding
+- Market cap and volume information
+- Detailed cryptocurrency pages with:
+  - Current price and 24h change
+  - Market cap and rank
+  - Supply information
+  - Price charts (coming soon)
+  - Favorite functionality
+
+### Weather Section
+- Current weather conditions for major cities
+- Temperature, humidity, and wind speed
+- Weather condition icons
+- Detailed weather pages with:
+  - Current weather metrics
+  - Additional weather information
+  - 5-day forecast (coming soon)
+  - Favorite functionality
+
+### News Section
+- Latest cryptocurrency and weather-related news
+- News source attribution
+- Timestamp for each article
+
+### Favorites
+- Save favorite cryptocurrencies and cities
+- Quick access to saved items
+- Persistent storage using localStorage
+
+## Tech Stack
+
+- **Frontend**: Next.js 14, React, TypeScript
+- **Styling**: Tailwind CSS
+- **State Management**: Redux Toolkit
+- **API Integration**: 
+  - CoinGecko API for cryptocurrency data
+  - OpenWeatherMap API for weather data
+  - News API for news articles
+- **Real-time Updates**: WebSocket for live data
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+- Node.js 18.x or later
+- npm or yarn
+- API keys for:
+  - CoinGecko API
+  - OpenWeatherMap API
+  - News API
+
+### Installation
+
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/VamsiKrishnaThota03/crypto-weather-nexus.git
+   cd crypto-weather-nexus
+   ```
+
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+
+3. Create a `.env.local` file in the root directory with your API keys:
+   ```
+   OPENWEATHER_API_KEY=your_openweather_api_key
+   NEWS_API_KEY=your_news_api_key
+   ```
+
+4. Start the development server:
+   ```bash
+   npm run dev
+   ```
+
+5. Open [http://localhost:3000](http://localhost:3000) in your browser.
+
+## Project Structure
+
+```
+crypto-weather-nexus/
+├── src/
+│   ├── app/                 # Next.js app directory
+│   │   ├── api/            # API routes
+│   │   ├── crypto/         # Crypto pages
+│   │   ├── weather/        # Weather pages
+│   │   └── dashboard/      # Dashboard page
+│   ├── components/         # React components
+│   ├── store/              # Redux store and slices
+│   ├── services/           # API services
+│   ├── hooks/              # Custom React hooks
+│   ├── types/              # TypeScript types
+│   └── utils/              # Utility functions
+├── public/                 # Static assets
+└── package.json           # Project dependencies
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## API Routes
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Cryptocurrency API
+- `GET /api/crypto` - Fetch cryptocurrency data
+- `GET /api/crypto/[id]` - Get detailed cryptocurrency information
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### Weather API
+- `GET /api/weather` - Fetch weather data
+- `GET /api/weather/[city]` - Get detailed weather information
 
-## Learn More
+### WebSocket API
+- `GET /api/websocket` - WebSocket endpoint for real-time updates
 
-To learn more about Next.js, take a look at the following resources:
+## Contributing
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## License
 
-## Deploy on Vercel
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Acknowledgments
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- [CoinGecko](https://www.coingecko.com/) for cryptocurrency data
+- [OpenWeatherMap](https://openweathermap.org/) for weather data
+- [News API](https://newsapi.org/) for news articles
