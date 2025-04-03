@@ -13,13 +13,16 @@ export default function WeatherDetail() {
   const dispatch = useAppDispatch();
   const { data, loading, error } = useAppSelector((state) => state.weather);
   const { cities: favoriteCities } = useAppSelector((state) => state.favorites);
-  const weather = data[city as string];
+  
+  // Decode the city name from the URL
+  const decodedCity = decodeURIComponent(city as string);
+  const weather = data[decodedCity];
 
   useEffect(() => {
-    if (city) {
-      dispatch(fetchWeatherData([decodeURIComponent(city as string)]));
+    if (decodedCity) {
+      dispatch(fetchWeatherData([decodedCity]));
     }
-  }, [dispatch, city]);
+  }, [dispatch, decodedCity]);
 
   if (loading) {
     return (
@@ -43,7 +46,7 @@ export default function WeatherDetail() {
       <div className="min-h-screen bg-gray-900 p-8">
         <div className="max-w-4xl mx-auto">
           <div className="text-red-400">
-            {error || 'Weather data not found'}
+            {error || `Weather data not available for ${decodedCity}`}
           </div>
         </div>
       </div>
@@ -55,17 +58,17 @@ export default function WeatherDetail() {
       <div className="max-w-4xl mx-auto">
         <div className="flex items-center space-x-4 mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-white">{weather.name}</h1>
+            <h1 className="text-3xl font-bold text-white">{decodedCity}</h1>
             <p className="text-gray-400">
               {new Date(weather.dt * 1000).toLocaleString()}
             </p>
           </div>
           <button
-            onClick={() => dispatch(toggleFavoriteCity(weather.name))}
+            onClick={() => dispatch(toggleFavoriteCity(decodedCity))}
             className="text-gray-400 hover:text-red-500 transition-colors"
-            aria-label={favoriteCities.includes(weather.name) ? "Remove from favorites" : "Add to favorites"}
+            aria-label={favoriteCities.includes(decodedCity) ? "Remove from favorites" : "Add to favorites"}
           >
-            {favoriteCities.includes(weather.name) ? (
+            {favoriteCities.includes(decodedCity) ? (
               <HeartIconSolid className="h-8 w-8 text-red-500" />
             ) : (
               <HeartIcon className="h-8 w-8" />
@@ -104,16 +107,8 @@ export default function WeatherDetail() {
                 <p className="text-white">{weather.main.pressure} hPa</p>
               </div>
               <div>
-                <p className="text-gray-400">Visibility</p>
-                <p className="text-white">{weather.visibility / 1000} km</p>
-              </div>
-              <div>
-                <p className="text-gray-400">Cloud Cover</p>
-                <p className="text-white">{weather.clouds.all}%</p>
-              </div>
-              <div>
                 <p className="text-gray-400">Conditions</p>
-                <p className="text-white capitalize">{weather.weather[0].description}</p>
+                <p className="text-white">{weather.weather[0].description}</p>
               </div>
             </div>
           </div>
