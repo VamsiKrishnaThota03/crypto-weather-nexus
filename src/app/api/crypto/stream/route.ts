@@ -7,6 +7,9 @@ const CRYPTO_CACHE_DURATION = 30000; // 30 seconds for crypto data
 const MAX_RETRIES = 3;
 const RETRY_DELAY = 2000; // 2 seconds
 
+// Disable static generation for this route
+export const dynamic = 'force-dynamic';
+
 async function fetchWithRetry(url: string, retries = MAX_RETRIES): Promise<any> {
   try {
     const response = await axios.get(url, {

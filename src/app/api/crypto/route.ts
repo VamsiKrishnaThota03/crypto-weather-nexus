@@ -38,6 +38,9 @@ async function fetchWithRetry(url: string, retries = MAX_RETRIES): Promise<Respo
   }
 }
 
+// Disable static generation for this route
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest) {
   try {
     const ids = request.nextUrl.searchParams.get('ids');
