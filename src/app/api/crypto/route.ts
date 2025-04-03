@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 
 // Cache the responses
 const cache = new Map();
@@ -38,10 +38,9 @@ async function fetchWithRetry(url: string, retries = MAX_RETRIES): Promise<Respo
   }
 }
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
-    const ids = searchParams.get('ids');
+    const ids = request.nextUrl.searchParams.get('ids');
 
     if (!ids) {
       return NextResponse.json({ error: 'Missing ids parameter' }, { status: 400 });
@@ -100,21 +99,9 @@ export async function GET(request: Request) {
 
     return NextResponse.json(validData);
   } catch (error) {
-    console.error('Crypto API error:', error);
-    
-    // Return cached data if available, even if expired
-    const cacheKey = new URL(request.url).searchParams.get('ids');
-    const cachedData = cache.get(cacheKey);
-    if (cachedData) {
-      console.log('Returning expired cached data due to error');
-      return NextResponse.json(cachedData.data);
-    }
-
+    console.error('Error fetching crypto data:', error);
     return NextResponse.json(
-      { 
-        error: 'Failed to fetch cryptocurrency data',
-        message: error instanceof Error ? error.message : 'Unknown error'
-      },
+      { error: error instanceof Error ? error.message : 'Failed to fetch crypto data' },
       { status: 500 }
     );
   }
