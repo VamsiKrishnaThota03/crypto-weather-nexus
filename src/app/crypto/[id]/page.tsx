@@ -9,6 +9,10 @@ import { HeartIcon as HeartIconSolid } from '@heroicons/react/24/solid';
 import { toggleFavoriteCrypto } from '@/store/slices/favoritesSlice';
 import PriceChart from '@/components/PriceChart';
 
+const formatNumber = (num: number) => {
+  return new Intl.NumberFormat('en-US').format(num);
+};
+
 export default function CryptoDetail() {
   const { id } = useParams();
   const dispatch = useAppDispatch();
@@ -44,52 +48,53 @@ export default function CryptoDetail() {
       <div className="min-h-screen bg-gray-900 p-8">
         <div className="max-w-4xl mx-auto">
           <div className="text-red-400">
-            {error || 'Cryptocurrency not found'}
+            {error || 'Cryptocurrency data not found'}
           </div>
         </div>
       </div>
     );
   }
 
-  const formatNumber = (value: number | undefined | null) => {
-    if (value === undefined || value === null) return 'N/A';
-    return value.toLocaleString();
-  };
-
-  const formatPrice = (value: number | undefined | null) => {
-    if (value === undefined || value === null) return 'N/A';
-    return `$${value.toLocaleString()}`;
-  };
-
-  const formatPercentage = (value: number | undefined | null) => {
-    if (value === undefined || value === null) return 'N/A';
-    return `${value >= 0 ? '+' : ''}${value.toFixed(2)}%`;
-  };
-
   return (
     <div className="min-h-screen bg-gray-900 p-8">
       <div className="max-w-4xl mx-auto">
         <div className="flex items-center space-x-4 mb-8">
-          <img src={crypto.image} alt={crypto.name} className="w-12 h-12" />
           <div>
             <h1 className="text-3xl font-bold text-white">{crypto.name}</h1>
-            <p className="text-gray-400">{crypto.symbol?.toUpperCase() || 'N/A'}</p>
+            <p className="text-gray-400">
+              {new Date().toLocaleString()}
+            </p>
           </div>
+          <button
+            onClick={() => dispatch(toggleFavoriteCrypto(crypto.id))}
+            className="text-gray-400 hover:text-red-500 transition-colors"
+            aria-label={favoriteCryptos.includes(crypto.id) ? "Remove from favorites" : "Add to favorites"}
+          >
+            {favoriteCryptos.includes(crypto.id) ? (
+              <HeartIconSolid className="h-8 w-8 text-red-500" />
+            ) : (
+              <HeartIcon className="h-8 w-8" />
+            )}
+          </button>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="bg-gray-800 rounded-lg p-6">
-            <h2 className="text-xl font-semibold text-white mb-4">Current Price</h2>
+            <h2 className="text-xl font-semibold text-white mb-4">Price Information</h2>
             <div className="space-y-4">
               <div>
-                <p className="text-gray-400">Price</p>
-                <p className="text-2xl font-bold text-white">{formatPrice(crypto.current_price)}</p>
+                <p className="text-gray-400">Current Price</p>
+                <p className="text-2xl font-bold text-white">${crypto.current_price.toLocaleString()}</p>
               </div>
               <div>
                 <p className="text-gray-400">24h Change</p>
-                <p className={`text-xl font-semibold ${crypto.price_change_percentage_24h >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                  {formatPercentage(crypto.price_change_percentage_24h)}
+                <p className={`text-xl ${crypto.price_change_percentage_24h >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                  {crypto.price_change_percentage_24h >= 0 ? '+' : ''}{crypto.price_change_percentage_24h.toFixed(2)}%
                 </p>
+              </div>
+              <div>
+                <p className="text-gray-400">Market Cap</p>
+                <p className="text-xl text-white">${(crypto.market_cap / 1e9).toFixed(2)}B</p>
               </div>
             </div>
           </div>
@@ -98,24 +103,16 @@ export default function CryptoDetail() {
             <h2 className="text-xl font-semibold text-white mb-4">Additional Information</h2>
             <div className="space-y-4">
               <div>
-                <p className="text-gray-400">Market Cap</p>
-                <p className="text-white">{formatPrice(crypto.market_cap)}</p>
-              </div>
-              <div>
                 <p className="text-gray-400">Rank</p>
-                <p className="text-white">#{formatNumber(crypto.market_cap_rank)}</p>
+                <p className="text-white">#{crypto.market_cap}</p>
               </div>
               <div>
                 <p className="text-gray-400">Circulating Supply</p>
-                <p className="text-white">
-                  {formatNumber(crypto.circulating_supply)} {crypto.symbol?.toUpperCase() || 'N/A'}
-                </p>
+                <p className="text-white">{formatNumber(crypto.circulating_supply)} {crypto.symbol.toUpperCase()}</p>
               </div>
               <div>
                 <p className="text-gray-400">Total Supply</p>
-                <p className="text-white">
-                  {crypto.total_supply ? formatNumber(crypto.total_supply) : '∞'} {crypto.symbol?.toUpperCase() || 'N/A'}
-                </p>
+                <p className="text-white">{formatNumber(crypto.total_supply)} {crypto.symbol.toUpperCase()}</p>
               </div>
             </div>
           </div>
