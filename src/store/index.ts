@@ -12,9 +12,9 @@ export const store = configureStore({
     news: newsReducer,
     favorites: favoritesReducer,
   },
-  middleware: (getDefaultMiddleware) =>
-    getDefaultMiddleware().concat(),
 });
+
+export type AppStore = typeof store;
 
 export type RootState = ReturnType<typeof store.getState>;
 export type AppDispatch = typeof store.dispatch;
