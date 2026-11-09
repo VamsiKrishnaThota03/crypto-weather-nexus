@@ -10,15 +10,6 @@ const localStorageMock = {
 
 global.localStorage = localStorageMock;
 
-// Mock WebSocket
-global.WebSocket = jest.fn().mockImplementation(() => ({
-  onopen: jest.fn(),
-  onmessage: jest.fn(),
-  onerror: jest.fn(),
-  onclose: jest.fn(),
-  close: jest.fn(),
-}));
-
 // Mock fetch
 global.fetch = jest.fn(() =>
   Promise.resolve({
