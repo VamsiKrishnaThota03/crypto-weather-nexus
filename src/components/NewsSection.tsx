@@ -1,71 +1,53 @@
 'use client';
 
+import { NewspaperIcon } from '@heroicons/react/24/outline';
 import { useAppSelector } from '@/store';
-import { RootState } from '@/store';
+import { EmptyState, ErrorState, SectionCard, SkeletonRows } from './ui';
 
-interface NewsItem {
-  title: string;
-  description: string;
-  url: string;
-  source: string;
-  publishedAt: string;
-}
+const truncate = (text: string, maxLength: number) =>
+  text.length <= maxLength ? text : `${text.slice(0, maxLength).replace(/\s+\S*$/, '')}…`;
 
-export default function NewsSection() {
-  const { items: newsItems, loading, error } = useAppSelector((state: RootState) => state.news);
+export default function NewsSection({ onRetry }: { onRetry?: () => void }) {
+  const { items, loading, error } = useAppSelector((state) => state.news);
 
-  const truncateText = (text: string, maxLength: number) => {
-    if (text.length <= maxLength) return text;
-    return text.substring(0, maxLength) + '...';
-  };
-
-  if (loading) {
-    return (
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-        <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">Latest News</h2>
-        <div className="animate-pulse">
-          <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mb-4"></div>
-          <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/2"></div>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-        <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">Latest News</h2>
-        <p className="text-red-500 dark:text-red-400">Error loading news data</p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-      <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">Latest News</h2>
-      <div className="space-y-4">
-        {newsItems.map((item: NewsItem, index: number) => (
-          <div key={index} className="border-b dark:border-gray-700 pb-4 last:border-b-0">
+  let body;
+  if (items.length === 0 && loading) {
+    body = <SkeletonRows rows={3} />;
+  } else if (items.length === 0 && error) {
+    body = <ErrorState message={error} onRetry={onRetry} />;
+  } else if (items.length === 0) {
+    body = <EmptyState title="No headlines right now" />;
+  } else {
+    body = (
+      <ul className="divide-y divide-slate-800">
+        {items.map((item) => (
+          <li key={item.url}>
             <a
               href={item.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="block hover:bg-gray-50 dark:hover:bg-gray-700 p-2 rounded transition-colors"
+              className="group block rounded-lg px-2 py-3 transition hover:bg-slate-800/50"
             >
-              <h3 className="font-medium text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 line-clamp-2">
-                {item.title}
-              </h3>
-              <p className="text-gray-600 dark:text-gray-400 text-sm mt-1 line-clamp-2">
-                {truncateText(item.description, 150)}
-              </p>
-              <div className="flex justify-between items-center mt-2 text-xs text-gray-500 dark:text-gray-400">
-                <span className="font-medium">{item.source}</span>
-                <span>{new Date(item.publishedAt).toLocaleDateString()}</span>
+              <h3 className="line-clamp-2 font-medium text-sky-300 group-hover:text-sky-200">{item.title}</h3>
+              {item.description && (
+                <p className="mt-1 line-clamp-2 text-sm text-slate-400">{truncate(item.description, 150)}</p>
+              )}
+              <div className="mt-2 flex items-center justify-between text-xs text-slate-500">
+                <span className="font-medium text-slate-400">{item.source}</span>
+                <time dateTime={item.publishedAt} suppressHydrationWarning>
+                  {new Date(item.publishedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                </time>
               </div>
             </a>
-          </div>
+          </li>
         ))}
-      </div>
-    </div>
+      </ul>
+    );
+  }
+
+  return (
+    <SectionCard title="Latest News" icon={<NewspaperIcon className="h-5 w-5 text-violet-400" aria-hidden="true" />}>
+      {body}
+    </SectionCard>
   );
-} 
+}

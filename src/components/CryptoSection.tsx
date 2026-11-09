@@ -1,116 +1,81 @@
 'use client';
 
-import { useAppSelector, useAppDispatch } from '@/store';
-import { HeartIcon } from '@heroicons/react/24/outline';
-import { HeartIcon as HeartIconSolid } from '@heroicons/react/24/solid';
-import { toggleFavoriteCrypto } from '@/store/slices/favoritesSlice';
 import Link from 'next/link';
+import { CurrencyDollarIcon } from '@heroicons/react/24/outline';
+import { useAppSelector, useAppDispatch } from '@/store';
+import { toggleFavoriteCrypto } from '@/store/slices/favoritesSlice';
+import { ChangeBadge, compactUsd, EmptyState, ErrorState, FavoriteButton, SectionCard, SkeletonRows, usd } from './ui';
 
 interface CryptoSectionProps {
-  showOnlyFavorites?: boolean;
+  ids: string[];
+  title?: string;
+  onRetry?: () => void;
 }
 
-export default function CryptoSection({ showOnlyFavorites = false }: CryptoSectionProps) {
+export default function CryptoSection({ ids, title = 'Cryptocurrency', onRetry }: CryptoSectionProps) {
   const dispatch = useAppDispatch();
   const { data: cryptoData, loading, error, lastUpdated } = useAppSelector((state) => state.crypto);
   const { cryptos: favoriteCryptos } = useAppSelector((state) => state.favorites);
 
-  // Filter crypto data to show only favorite cryptos if showOnlyFavorites is true
-  const filteredCryptoData = showOnlyFavorites
-    ? Object.values(cryptoData).filter(crypto => favoriteCryptos.includes(crypto.id))
-    : Object.values(cryptoData);
+  const coins = ids.map((id) => cryptoData[id]).filter(Boolean);
 
-  if (loading) {
-    return (
-      <div className="bg-gray-800 rounded-lg shadow p-6">
-        <h2 className="text-xl font-semibold mb-4 text-white">Cryptocurrency</h2>
-        <div className="animate-pulse">
-          <div className="h-4 bg-gray-700 rounded w-3/4 mb-4"></div>
-          <div className="h-4 bg-gray-700 rounded w-1/2"></div>
-        </div>
-      </div>
+  let body;
+  if (coins.length === 0 && loading) {
+    body = <SkeletonRows rows={Math.min(Math.max(ids.length, 1), 3)} />;
+  } else if (coins.length === 0 && error) {
+    body = (
+      <ErrorState
+        message={error}
+        hint={error.includes('Rate limit') ? 'CoinGecko limits free requests. Wait a minute and retry.' : undefined}
+        onRetry={onRetry}
+      />
     );
-  }
-
-  if (error) {
-    return (
-      <div className="bg-gray-800 rounded-lg shadow p-6">
-        <h2 className="text-xl font-semibold mb-4 text-white">Cryptocurrency</h2>
-        <div className="text-red-400">
-          <p>{error}</p>
-          {error.includes('Rate limit') && (
-            <p className="mt-2 text-sm">Please wait a few minutes before trying again.</p>
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  if (showOnlyFavorites && filteredCryptoData.length === 0) {
-    return (
-      <div className="bg-gray-800 rounded-lg shadow p-6">
-        <h2 className="text-xl font-semibold mb-4 text-white">Cryptocurrency</h2>
-        <p className="text-gray-400">No favorite cryptocurrencies selected</p>
-      </div>
+  } else if (coins.length === 0) {
+    body = <EmptyState title="No coins to show" />;
+  } else {
+    body = (
+      <ul className="space-y-3">
+        {coins.map((crypto) => (
+          <li key={crypto.id} className="card-hover relative flex items-center gap-4 rounded-xl border border-slate-800 bg-slate-900/40 p-4">
+            {crypto.image ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={crypto.image} alt="" className="h-10 w-10 rounded-full" width={40} height={40} />
+            ) : (
+              <span className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-800 text-sm font-bold">
+                {crypto.symbol.charAt(0)}
+              </span>
+            )}
+            <div className="min-w-0 flex-1">
+              <Link href={`/crypto/${crypto.id}`} className="font-semibold text-white after:absolute after:inset-0 after:rounded-xl">
+                {crypto.name}
+              </Link>
+              <p className="truncate text-xs text-slate-400">
+                <span className="uppercase tracking-wide">{crypto.symbol}</span>
+                <span className="hidden sm:inline"> · {compactUsd(crypto.market_cap)} mcap</span>
+              </p>
+            </div>
+            <div className="text-right">
+              <p className="font-semibold tabular-nums text-white">{usd(crypto.current_price)}</p>
+              <ChangeBadge value={crypto.price_change_percentage_24h} />
+            </div>
+            <FavoriteButton
+              active={favoriteCryptos.includes(crypto.id)}
+              label={crypto.name}
+              onToggle={() => dispatch(toggleFavoriteCrypto(crypto.id))}
+            />
+          </li>
+        ))}
+      </ul>
     );
   }
 
   return (
-    <div className="bg-gray-800 rounded-lg shadow p-6">
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-xl font-semibold text-white">Cryptocurrency</h2>
-        {lastUpdated && (
-          <span className="text-sm text-gray-400">
-            Updated {new Date(lastUpdated).toLocaleTimeString()}
-          </span>
-        )}
-      </div>
-      <div className="space-y-4">
-        {filteredCryptoData.map((crypto) => (
-          <Link 
-            key={crypto.id} 
-            href={`/crypto/${crypto.id}`}
-            className="block"
-          >
-            <div className="border border-gray-700 rounded-lg p-4 bg-gray-800 hover:bg-gray-700 transition-colors">
-              <div className="flex justify-between items-center">
-                <div className="flex items-center space-x-3">
-                  <img src={crypto.image} alt={crypto.name} className="w-8 h-8" />
-                  <div>
-                    <h3 className="font-medium text-white">{crypto.name}</h3>
-                    <p className="text-gray-400">{crypto.symbol}</p>
-                  </div>
-                </div>
-                <button
-                  onClick={(e) => {
-                    e.preventDefault();
-                    dispatch(toggleFavoriteCrypto(crypto.id));
-                  }}
-                  className="text-gray-400 hover:text-red-500 transition-colors"
-                  aria-label={favoriteCryptos.includes(crypto.id) ? "Remove from favorites" : "Add to favorites"}
-                >
-                  {favoriteCryptos.includes(crypto.id) ? (
-                    <HeartIconSolid className="h-5 w-5 text-red-500" />
-                  ) : (
-                    <HeartIcon className="h-5 w-5" />
-                  )}
-                </button>
-              </div>
-              <div className="mt-2">
-                <p className="text-2xl font-bold text-white">
-                  ${crypto.current_price.toLocaleString()}
-                </p>
-                <p className={`${crypto.price_change_percentage_24h >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                  24h: {crypto.price_change_percentage_24h >= 0 ? '+' : ''}{crypto.price_change_percentage_24h.toFixed(2)}%
-                </p>
-                <p className="text-gray-400">
-                  Market Cap: ${(crypto.market_cap / 1e9).toFixed(2)}B
-                </p>
-              </div>
-            </div>
-          </Link>
-        ))}
-      </div>
-    </div>
+    <SectionCard
+      title={title}
+      icon={<CurrencyDollarIcon className="h-5 w-5 text-amber-400" aria-hidden="true" />}
+      aside={lastUpdated ? <span suppressHydrationWarning>Updated {new Date(lastUpdated).toLocaleTimeString()}</span> : null}
+    >
+      {body}
+    </SectionCard>
   );
-} 
+}

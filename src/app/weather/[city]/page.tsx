@@ -1,119 +1,96 @@
 'use client';
 
+import Link from 'next/link';
 import { useEffect } from 'react';
 import { useParams } from 'next/navigation';
+import { ArrowLeftIcon } from '@heroicons/react/24/outline';
 import { useAppDispatch, useAppSelector } from '@/store';
 import { fetchWeatherData } from '@/store/slices/weatherSlice';
-import { HeartIcon } from '@heroicons/react/24/outline';
-import { HeartIcon as HeartIconSolid } from '@heroicons/react/24/solid';
 import { toggleFavoriteCity } from '@/store/slices/favoritesSlice';
+import { ErrorState, FavoriteButton } from '@/components/ui';
+
+function Stat({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-4">
+      <dt className="text-xs uppercase tracking-wide text-slate-400">{label}</dt>
+      <dd className="mt-1 text-lg font-semibold tabular-nums text-white">{value}</dd>
+    </div>
+  );
+}
 
 export default function WeatherDetail() {
-  const { city } = useParams();
+  const { city } = useParams<{ city: string }>();
   const dispatch = useAppDispatch();
-  const { data, loading, error } = useAppSelector((state) => state.weather);
+  const { data, loading, error, cityErrors } = useAppSelector((state) => state.weather);
   const { cities: favoriteCities } = useAppSelector((state) => state.favorites);
-  
-  // Decode the city name from the URL
-  const decodedCity = decodeURIComponent(city as string);
+
+  const decodedCity = decodeURIComponent(city);
   const weather = data[decodedCity];
 
   useEffect(() => {
-    if (decodedCity) {
-      dispatch(fetchWeatherData([decodedCity]));
-    }
+    if (decodedCity) dispatch(fetchWeatherData([decodedCity]));
   }, [dispatch, decodedCity]);
 
-  if (loading) {
+  const back = (
+    <Link href="/weather" className="mb-6 inline-flex items-center gap-1.5 text-sm text-slate-400 hover:text-white">
+      <ArrowLeftIcon className="h-4 w-4" aria-hidden="true" /> All cities
+    </Link>
+  );
+
+  if (!weather) {
+    const message = cityErrors[decodedCity] || error;
     return (
-      <div className="min-h-screen bg-gray-900 p-8">
-        <div className="max-w-4xl mx-auto">
-          <div className="animate-pulse">
-            <div className="h-8 bg-gray-800 rounded w-1/4 mb-4"></div>
-            <div className="h-4 bg-gray-800 rounded w-1/2 mb-8"></div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="h-32 bg-gray-800 rounded"></div>
-              <div className="h-32 bg-gray-800 rounded"></div>
-            </div>
+      <div className="mx-auto max-w-4xl">
+        {back}
+        {loading || !message ? (
+          <div className="animate-pulse space-y-4" aria-label="Loading">
+            <div className="h-10 w-1/3 rounded-lg bg-slate-800" />
+            <div className="h-40 rounded-2xl bg-slate-800/60" />
           </div>
-        </div>
+        ) : (
+          <ErrorState message={message} />
+        )}
       </div>
     );
   }
 
-  if (error || !weather) {
-    return (
-      <div className="min-h-screen bg-gray-900 p-8">
-        <div className="max-w-4xl mx-auto">
-          <div className="text-red-400">
-            {error || `Weather data not available for ${decodedCity}`}
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const description = weather.weather?.[0]?.description ?? weather.conditions;
 
   return (
-    <div className="min-h-screen bg-gray-900 p-8">
-      <div className="max-w-4xl mx-auto">
-        <div className="flex items-center space-x-4 mb-8">
-          <div>
-            <h1 className="text-3xl font-bold text-white">{decodedCity}</h1>
-            <p className="text-gray-400">
-              {new Date(weather.dt * 1000).toLocaleString()}
-            </p>
-          </div>
-          <button
-            onClick={() => dispatch(toggleFavoriteCity(decodedCity))}
-            className="text-gray-400 hover:text-red-500 transition-colors"
-            aria-label={favoriteCities.includes(decodedCity) ? "Remove from favorites" : "Add to favorites"}
-          >
-            {favoriteCities.includes(decodedCity) ? (
-              <HeartIconSolid className="h-8 w-8 text-red-500" />
-            ) : (
-              <HeartIcon className="h-8 w-8" />
-            )}
-          </button>
+    <div className="mx-auto max-w-4xl">
+      {back}
+      <div className="mb-6 flex items-center gap-4">
+        <div className="flex-1">
+          <h1 className="text-3xl font-bold tracking-tight text-white">{decodedCity}</h1>
+          <p className="text-sm text-slate-400" suppressHydrationWarning>
+            Observed {new Date(weather.dt * 1000).toLocaleString()}
+          </p>
         </div>
+        <FavoriteButton
+          size="lg"
+          active={favoriteCities.includes(decodedCity)}
+          label={decodedCity}
+          onToggle={() => dispatch(toggleFavoriteCity(decodedCity))}
+        />
+      </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="bg-gray-800 rounded-lg p-6">
-            <h2 className="text-xl font-semibold text-white mb-4">Current Weather</h2>
-            <div className="space-y-4">
-              <div>
-                <p className="text-gray-400">Temperature</p>
-                <p className="text-2xl font-bold text-white">{Math.round(weather.main.temp)}°C</p>
-              </div>
-              <div>
-                <p className="text-gray-400">Feels Like</p>
-                <p className="text-xl text-white">{Math.round(weather.main.feels_like)}°C</p>
-              </div>
-              <div>
-                <p className="text-gray-400">Humidity</p>
-                <p className="text-xl text-white">{weather.main.humidity}%</p>
-              </div>
-              <div>
-                <p className="text-gray-400">Wind Speed</p>
-                <p className="text-xl text-white">{weather.wind.speed} m/s</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-gray-800 rounded-lg p-6">
-            <h2 className="text-xl font-semibold text-white mb-4">Additional Information</h2>
-            <div className="space-y-4">
-              <div>
-                <p className="text-gray-400">Pressure</p>
-                <p className="text-white">{weather.main.pressure} hPa</p>
-              </div>
-              <div>
-                <p className="text-gray-400">Conditions</p>
-                <p className="text-white">{weather.weather[0].description}</p>
-              </div>
-            </div>
-          </div>
+      <div className="card mb-6 flex items-center gap-6 p-6">
+        {weather.icon && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={`https://openweathermap.org/img/wn/${weather.icon}@4x.png`} alt="" width={112} height={112} className="-m-4 h-28 w-28" />
+        )}
+        <div>
+          <p className="text-6xl font-bold tabular-nums text-white">{Math.round(weather.main.temp)}°C</p>
+          <p className="mt-1 capitalize text-slate-300">{description}</p>
         </div>
       </div>
+
+      <dl className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+        <Stat label="Feels like" value={`${Math.round(weather.main.feels_like)}°C`} />
+        <Stat label="Humidity" value={`${weather.main.humidity}%`} />
+        <Stat label="Wind" value={`${weather.wind.speed} m/s`} />
+        <Stat label="Pressure" value={`${weather.main.pressure} hPa`} />
+      </dl>
     </div>
   );
-} 
+}

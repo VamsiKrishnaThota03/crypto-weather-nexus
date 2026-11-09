@@ -1,28 +1,20 @@
 'use client';
 
-import { useEffect } from 'react';
 import { useAppDispatch } from '@/store';
 import { fetchCryptoData } from '@/store/slices/cryptoSlice';
+import { useRefresh } from '@/hooks/useRefresh';
+import { DEFAULT_CRYPTOS } from '@/lib/constants';
 import CryptoSection from '@/components/CryptoSection';
-
-const DEFAULT_CRYPTOS = ['bitcoin', 'ethereum', 'cardano'];
 
 export default function CryptoPage() {
   const dispatch = useAppDispatch();
-
-  useEffect(() => {
-    dispatch(fetchCryptoData(DEFAULT_CRYPTOS));
-    const interval = setInterval(() => {
-      dispatch(fetchCryptoData(DEFAULT_CRYPTOS));
-    }, 60000);
-
-    return () => clearInterval(interval);
-  }, [dispatch]);
+  const reload = useRefresh(() => dispatch(fetchCryptoData(DEFAULT_CRYPTOS)));
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold mb-8">Cryptocurrency</h1>
-      <CryptoSection />
+    <div className="mx-auto max-w-3xl">
+      <h1 className="mb-2 text-3xl font-bold tracking-tight text-white">Cryptocurrency</h1>
+      <p className="mb-8 text-slate-400">Tap a coin for its 7-day chart and supply details.</p>
+      <CryptoSection ids={DEFAULT_CRYPTOS} title="Top coins" onRetry={reload} />
     </div>
   );
-} 
+}

@@ -1,103 +1,94 @@
+'use client';
+
 import { useEffect, useState } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import axios from 'axios';
 
 interface PriceChartProps {
   cryptoId: string;
+  days?: number;
 }
 
-interface ChartData {
-  date: string;
+interface ChartPoint {
+  time: number;
   price: number;
 }
 
-export default function PriceChart({ cryptoId }: PriceChartProps) {
-  const [data, setData] = useState<ChartData[]>([]);
+const compact = (value: number) =>
+  new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', notation: 'compact', maximumFractionDigits: 2 }).format(value);
+
+export default function PriceChart({ cryptoId, days = 7 }: PriceChartProps) {
+  const [data, setData] = useState<ChartPoint[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchChartData = async () => {
-      try {
-        setLoading(true);
-        const response = await axios.get(`/api/crypto/history?ids=${cryptoId}&days=7`);
-        
-        if (response.data && response.data[cryptoId]) {
-          const chartData = response.data[cryptoId].prices.map(([timestamp, price]: [number, number]) => ({
-            date: new Date(timestamp).toLocaleDateString(),
-            price: price
-          }));
-          setData(chartData);
-        }
-      } catch (err) {
-        console.error('Error fetching chart data:', err);
-        setError('Failed to load price history');
-      } finally {
-        setLoading(false);
-      }
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+    axios
+      .get('/api/crypto/history', { params: { id: cryptoId, days } })
+      .then((response) => {
+        if (cancelled) return;
+        const prices: [number, number][] = Array.isArray(response.data?.prices) ? response.data.prices : [];
+        setData(prices.map(([time, price]) => ({ time, price })));
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        const message = axios.isAxiosError(err) ? err.response?.data?.error : null;
+        setError(typeof message === 'string' ? message : 'Failed to load price history');
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
     };
-
-    fetchChartData();
-  }, [cryptoId]);
+  }, [cryptoId, days]);
 
   if (loading) {
-    return (
-      <div className="h-64 flex items-center justify-center">
-        <div className="animate-pulse text-gray-400">Loading chart...</div>
-      </div>
-    );
+    return <div className="h-64 animate-pulse rounded-xl bg-slate-800/60" aria-label="Loading chart" />;
   }
-
   if (error) {
-    return (
-      <div className="h-64 flex items-center justify-center">
-        <div className="text-red-400">{error}</div>
-      </div>
-    );
+    return <div className="flex h-64 items-center justify-center text-sm text-rose-300">{error}</div>;
+  }
+  if (data.length === 0) {
+    return <div className="flex h-64 items-center justify-center text-sm text-slate-400">No price history available</div>;
   }
 
-  if (data.length === 0) {
-    return (
-      <div className="h-64 flex items-center justify-center">
-        <div className="text-gray-400">No data available</div>
-      </div>
-    );
-  }
+  const rising = data[data.length - 1].price >= data[0].price;
+  const color = rising ? '#34d399' : '#fb7185';
 
   return (
     <div className="h-64 w-full">
       <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={data} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-          <XAxis 
-            dataKey="date" 
-            stroke="#9CA3AF"
+        <LineChart data={data} margin={{ top: 5, right: 8, bottom: 5, left: 0 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
+          <XAxis
+            dataKey="time"
+            type="number"
+            domain={['dataMin', 'dataMax']}
+            stroke="#64748b"
             tick={{ fontSize: 12 }}
+            tickFormatter={(t) => new Date(t).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+            minTickGap={40}
           />
-          <YAxis 
-            stroke="#9CA3AF"
+          <YAxis
+            stroke="#64748b"
             tick={{ fontSize: 12 }}
-            tickFormatter={(value) => `$${value.toLocaleString()}`}
+            width={64}
+            domain={['auto', 'auto']}
+            tickFormatter={(value: number) => compact(value)}
           />
-          <Tooltip 
-            contentStyle={{ 
-              backgroundColor: '#1F2937',
-              border: '1px solid #374151',
-              borderRadius: '0.5rem'
-            }}
-            labelStyle={{ color: '#9CA3AF' }}
-            formatter={(value: number) => [`$${value.toLocaleString()}`, 'Price']}
+          <Tooltip
+            contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '0.75rem' }}
+            labelStyle={{ color: '#94a3b8' }}
+            labelFormatter={(t: number) => new Date(t).toLocaleString()}
+            formatter={(value: number) => [`$${value.toLocaleString(undefined, { maximumFractionDigits: 2 })}`, 'Price']}
           />
-          <Line 
-            type="monotone" 
-            dataKey="price" 
-            stroke="#3B82F6" 
-            strokeWidth={2}
-            dot={false}
-            activeDot={{ r: 6, fill: '#3B82F6' }}
-          />
+          <Line type="monotone" dataKey="price" stroke={color} strokeWidth={2} dot={false} activeDot={{ r: 5, fill: color }} />
         </LineChart>
       </ResponsiveContainer>
     </div>
   );
-} 
+}

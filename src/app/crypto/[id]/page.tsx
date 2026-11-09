@@ -1,126 +1,101 @@
 'use client';
 
+import Link from 'next/link';
 import { useEffect } from 'react';
 import { useParams } from 'next/navigation';
+import { ArrowLeftIcon } from '@heroicons/react/24/outline';
 import { useAppDispatch, useAppSelector } from '@/store';
 import { fetchCryptoData } from '@/store/slices/cryptoSlice';
-import { HeartIcon } from '@heroicons/react/24/outline';
-import { HeartIcon as HeartIconSolid } from '@heroicons/react/24/solid';
 import { toggleFavoriteCrypto } from '@/store/slices/favoritesSlice';
 import PriceChart from '@/components/PriceChart';
+import { ChangeBadge, compactUsd, ErrorState, FavoriteButton, usd } from '@/components/ui';
 
-const formatNumber = (num: number) => {
-  return new Intl.NumberFormat('en-US').format(num);
-};
+const formatNumber = (num: number) => new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 }).format(num);
+
+function Stat({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-4">
+      <dt className="text-xs uppercase tracking-wide text-slate-400">{label}</dt>
+      <dd className="mt-1 text-lg font-semibold tabular-nums text-white">{value}</dd>
+    </div>
+  );
+}
 
 export default function CryptoDetail() {
-  const { id } = useParams();
+  const { id } = useParams<{ id: string }>();
   const dispatch = useAppDispatch();
   const { data, loading, error } = useAppSelector((state) => state.crypto);
   const { cryptos: favoriteCryptos } = useAppSelector((state) => state.favorites);
-  
-  // Decode the crypto ID from the URL
-  const decodedId = decodeURIComponent(id as string);
+
+  const decodedId = decodeURIComponent(id);
   const crypto = data[decodedId];
 
   useEffect(() => {
-    if (decodedId) {
-      dispatch(fetchCryptoData([decodedId]));
-    }
+    if (decodedId) dispatch(fetchCryptoData([decodedId]));
   }, [dispatch, decodedId]);
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-900 p-8">
-        <div className="max-w-4xl mx-auto">
-          <div className="animate-pulse">
-            <div className="h-8 bg-gray-800 rounded w-1/4 mb-4"></div>
-            <div className="h-4 bg-gray-800 rounded w-1/2 mb-8"></div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="h-32 bg-gray-800 rounded"></div>
-              <div className="h-32 bg-gray-800 rounded"></div>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const back = (
+    <Link href="/crypto" className="mb-6 inline-flex items-center gap-1.5 text-sm text-slate-400 hover:text-white">
+      <ArrowLeftIcon className="h-4 w-4" aria-hidden="true" /> All coins
+    </Link>
+  );
 
-  if (error || !crypto) {
+  if (!crypto) {
     return (
-      <div className="min-h-screen bg-gray-900 p-8">
-        <div className="max-w-4xl mx-auto">
-          <div className="text-red-400">
-            {error || `Cryptocurrency data not available for ${decodedId}`}
+      <div className="mx-auto max-w-4xl">
+        {back}
+        {loading || !error ? (
+          <div className="animate-pulse space-y-4" aria-label="Loading">
+            <div className="h-10 w-1/3 rounded-lg bg-slate-800" />
+            <div className="h-64 rounded-2xl bg-slate-800/60" />
           </div>
-        </div>
+        ) : (
+          <ErrorState message={error} hint={`Could not load data for "${decodedId}".`} />
+        )}
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-900 p-8">
-      <div className="max-w-4xl mx-auto">
-        <div className="flex items-center space-x-4 mb-8">
-          <div>
-            <h1 className="text-3xl font-bold text-white">{crypto.name}</h1>
-            <p className="text-gray-400">
-              {new Date().toLocaleString()}
-            </p>
-          </div>
-          <button
-            onClick={() => dispatch(toggleFavoriteCrypto(decodedId))}
-            className="text-gray-400 hover:text-red-500 transition-colors"
-            aria-label={favoriteCryptos.includes(decodedId) ? "Remove from favorites" : "Add to favorites"}
-          >
-            {favoriteCryptos.includes(decodedId) ? (
-              <HeartIconSolid className="h-8 w-8 text-red-500" />
-            ) : (
-              <HeartIcon className="h-8 w-8" />
-            )}
-          </button>
+    <div className="mx-auto max-w-4xl">
+      {back}
+      <div className="mb-6 flex flex-wrap items-center gap-4">
+        {crypto.image && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={crypto.image} alt="" width={48} height={48} className="h-12 w-12 rounded-full" />
+        )}
+        <div className="flex-1">
+          <h1 className="text-3xl font-bold tracking-tight text-white">
+            {crypto.name} <span className="text-lg font-medium text-slate-400">{crypto.symbol}</span>
+          </h1>
+          <p className="text-sm text-slate-400">Rank #{crypto.market_cap_rank || '–'}</p>
         </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="bg-gray-800 rounded-lg p-6">
-            <h2 className="text-xl font-semibold text-white mb-4">Price Information</h2>
-            <div className="space-y-4">
-              <div>
-                <p className="text-gray-400">Current Price</p>
-                <p className="text-2xl font-bold text-white">${crypto.current_price.toLocaleString()}</p>
-              </div>
-              <div>
-                <p className="text-gray-400">24h Change</p>
-                <p className={`text-xl ${crypto.price_change_percentage_24h >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                  {crypto.price_change_percentage_24h >= 0 ? '+' : ''}{crypto.price_change_percentage_24h.toFixed(2)}%
-                </p>
-              </div>
-              <div>
-                <p className="text-gray-400">Market Cap</p>
-                <p className="text-xl text-white">${(crypto.market_cap / 1e9).toFixed(2)}B</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-gray-800 rounded-lg p-6">
-            <h2 className="text-xl font-semibold text-white mb-4">Additional Information</h2>
-            <div className="space-y-4">
-              <div>
-                <p className="text-gray-400">Rank</p>
-                <p className="text-white">#{crypto.market_cap_rank}</p>
-              </div>
-              <div>
-                <p className="text-gray-400">Circulating Supply</p>
-                <p className="text-white">{formatNumber(crypto.circulating_supply)} {crypto.symbol}</p>
-              </div>
-              <div>
-                <p className="text-gray-400">Total Supply</p>
-                <p className="text-white">{formatNumber(crypto.total_supply)} {crypto.symbol}</p>
-              </div>
-            </div>
-          </div>
-        </div>
+        <FavoriteButton
+          size="lg"
+          active={favoriteCryptos.includes(decodedId)}
+          label={crypto.name}
+          onToggle={() => dispatch(toggleFavoriteCrypto(decodedId))}
+        />
       </div>
+
+      <div className="card mb-6 p-5 sm:p-6">
+        <div className="mb-4 flex flex-wrap items-baseline gap-3">
+          <p className="text-4xl font-bold tabular-nums text-white">{usd(crypto.current_price)}</p>
+          <ChangeBadge value={crypto.price_change_percentage_24h} />
+          <span className="text-xs text-slate-500">24h</span>
+        </div>
+        <h2 className="mb-2 text-sm font-medium text-slate-400">Last 7 days</h2>
+        <PriceChart cryptoId={decodedId} />
+      </div>
+
+      <dl className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <Stat label="Market cap" value={compactUsd(crypto.market_cap)} />
+        <Stat label="Circulating supply" value={`${formatNumber(crypto.circulating_supply)} ${crypto.symbol}`} />
+        <Stat
+          label="Total supply"
+          value={crypto.total_supply ? `${formatNumber(crypto.total_supply)} ${crypto.symbol}` : 'Unlimited'}
+        />
+      </dl>
     </div>
   );
-} 
+}

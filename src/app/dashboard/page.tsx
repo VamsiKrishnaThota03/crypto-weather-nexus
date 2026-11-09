@@ -1,53 +1,35 @@
 'use client';
 
-import { useEffect } from 'react';
 import { useAppDispatch } from '@/store';
 import { fetchWeatherData } from '@/store/slices/weatherSlice';
 import { fetchCryptoData } from '@/store/slices/cryptoSlice';
 import { fetchNewsData } from '@/store/slices/newsSlice';
-import { useWebSocket } from '@/hooks/useWebSocket';
+import { useRefresh } from '@/hooks/useRefresh';
+import { DEFAULT_CITIES, DEFAULT_CRYPTOS } from '@/lib/constants';
 import WeatherSection from '@/components/WeatherSection';
 import CryptoSection from '@/components/CryptoSection';
 import NewsSection from '@/components/NewsSection';
 
-const DEFAULT_CITIES = ['New York', 'London', 'Tokyo'];
-const DEFAULT_CRYPTOS = ['bitcoin', 'ethereum', 'cardano'];
-
 export default function Dashboard() {
   const dispatch = useAppDispatch();
-  useWebSocket();
-
-  useEffect(() => {
-    dispatch(fetchWeatherData(DEFAULT_CITIES));
-    dispatch(fetchCryptoData(DEFAULT_CRYPTOS));
-    dispatch(fetchNewsData());
-
-    const interval = setInterval(() => {
-      dispatch(fetchWeatherData(DEFAULT_CITIES));
-      dispatch(fetchCryptoData(DEFAULT_CRYPTOS));
-      dispatch(fetchNewsData());
-    }, 60000);
-
-    return () => clearInterval(interval);
-  }, [dispatch]);
+  const reloadWeather = useRefresh(() => dispatch(fetchWeatherData(DEFAULT_CITIES)));
+  const reloadCrypto = useRefresh(() => dispatch(fetchCryptoData(DEFAULT_CRYPTOS)));
+  const reloadNews = useRefresh(() => dispatch(fetchNewsData()), 5 * 60_000);
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold mb-8">CryptoWeather Nexus</h1>
-      
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <div className="col-span-1">
-          <WeatherSection />
-        </div>
-        
-        <div className="col-span-1">
-          <CryptoSection />
-        </div>
-        
-        <div className="col-span-1 md:col-span-2 lg:col-span-1">
-          <NewsSection />
+    <div>
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold tracking-tight text-white">Dashboard</h1>
+        <p className="mt-1 text-slate-400">Prices, weather and headlines, refreshed automatically.</p>
+      </div>
+
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <WeatherSection cities={DEFAULT_CITIES} onRetry={reloadWeather} />
+        <CryptoSection ids={DEFAULT_CRYPTOS} onRetry={reloadCrypto} />
+        <div className="md:col-span-2 lg:col-span-1">
+          <NewsSection onRetry={reloadNews} />
         </div>
       </div>
     </div>
   );
-} 
+}
