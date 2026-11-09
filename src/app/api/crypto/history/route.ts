@@ -1,69 +1,53 @@
 import { NextResponse } from 'next/server';
+import { ALLOWED_HISTORY_DAYS, isValidCoinId } from '@/lib/validation';
+
+export const dynamic = 'force-dynamic';
 
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
-const cache = new Map<string, { data: any; timestamp: number }>();
+const cache = new Map<string, { data: unknown; timestamp: number }>();
 
+/** Returns CoinGecko's market_chart payload: { prices: [timestamp, price][], ... } */
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  const ids = searchParams.get('ids');
+  const id = searchParams.get('id') ?? searchParams.get('ids');
   const days = searchParams.get('days') || '7';
 
-  if (!ids) {
-    return NextResponse.json({ error: 'Missing required parameter: ids' }, { status: 400 });
+  if (!isValidCoinId(id)) {
+    return NextResponse.json({ error: 'Missing or invalid id parameter' }, { status: 400 });
+  }
+  if (!ALLOWED_HISTORY_DAYS.includes(days)) {
+    return NextResponse.json({ error: 'Invalid days parameter' }, { status: 400 });
   }
 
-  // Check cache
-  const cacheKey = `${ids}-${days}`;
+  const cacheKey = `${id}-${days}`;
   const cached = cache.get(cacheKey);
   if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
     return NextResponse.json(cached.data);
   }
 
   try {
-    // Add delay to respect rate limits
-    await new Promise(resolve => setTimeout(resolve, 1000));
-
     const response = await fetch(
-      `https://api.coingecko.com/api/v3/coins/${ids}/market_chart?vs_currency=usd&days=${days}`,
-      {
-        headers: {
-          'Accept': 'application/json',
-        },
-      }
+      `https://api.coingecko.com/api/v3/coins/${encodeURIComponent(id)}/market_chart?vs_currency=usd&days=${days}`,
+      { headers: { Accept: 'application/json' }, cache: 'no-store' }
     );
 
     if (!response.ok) {
+      if (cached) return NextResponse.json(cached.data);
       if (response.status === 429) {
-        // If rate limited, try to return cached data even if expired
-        if (cached) {
-          return NextResponse.json(cached.data);
-        }
-        return NextResponse.json(
-          { error: 'Rate limit exceeded. Please try again later.' },
-          { status: 429 }
-        );
+        return NextResponse.json({ error: 'Rate limit exceeded. Please try again later.' }, { status: 429 });
       }
-      throw new Error(`HTTP error! status: ${response.status}`);
+      if (response.status === 404) {
+        return NextResponse.json({ error: 'Unknown coin' }, { status: 404 });
+      }
+      throw new Error(`HTTP error ${response.status}`);
     }
 
     const data = await response.json();
-    
-    // Cache the response
-    cache.set(cacheKey, {
-      data,
-      timestamp: Date.now(),
-    });
-
+    cache.set(cacheKey, { data, timestamp: Date.now() });
     return NextResponse.json(data);
   } catch (error) {
-    console.error('Error fetching crypto history:', error);
-    // If we have cached data, return it even if expired
-    if (cached) {
-      return NextResponse.json(cached.data);
-    }
-    return NextResponse.json(
-      { error: 'Failed to fetch cryptocurrency history' },
-      { status: 500 }
-    );
+    console.error('Error fetching crypto history:', error instanceof Error ? error.message : error);
+    if (cached) return NextResponse.json(cached.data);
+    return NextResponse.json({ error: 'Failed to fetch cryptocurrency history' }, { status: 502 });
   }
-} 
+}
