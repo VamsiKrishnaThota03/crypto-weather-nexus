@@ -1,7 +1,7 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import axios from 'axios';
 
-interface CryptoData {
+export interface CryptoData {
   id: string;
   name: string;
   symbol: string;
@@ -32,9 +32,7 @@ export const fetchCryptoData = createAsyncThunk(
   'crypto/fetchCryptoData',
   async (cryptos: string[], { rejectWithValue }) => {
     try {
-      // Decode any URL-encoded IDs
-      const decodedCryptos = cryptos.map(crypto => decodeURIComponent(crypto));
-      const response = await axios.get(`/api/crypto?ids=${decodedCryptos.join(',')}`);
+      const response = await axios.get('/api/crypto', { params: { ids: cryptos.join(',') } });
       
       if (!Array.isArray(response.data)) {
         throw new Error('Invalid response format from API');
@@ -71,7 +69,6 @@ export const fetchCryptoData = createAsyncThunk(
 
       return { data, timestamp: Date.now() };
     } catch (error) {
-      console.error('Error fetching crypto data:', error);
       if (axios.isAxiosError(error)) {
         return rejectWithValue(
           error.response?.data?.error || 'Failed to fetch crypto data'
@@ -91,7 +88,7 @@ const cryptoSlice = createSlice({
     updateCryptoPrice: (state, action) => {
       const { id, price } = action.payload;
       const decodedId = decodeURIComponent(id);
-      if (state.data[decodedId]) {
+      if (state.data[decodedId] && typeof price === 'number') {
         state.data[decodedId].current_price = price;
       }
     },
@@ -100,20 +97,17 @@ const cryptoSlice = createSlice({
     builder
       .addCase(fetchCryptoData.pending, (state) => {
         state.loading = true;
-        state.error = null;
       })
       .addCase(fetchCryptoData.fulfilled, (state, action) => {
         state.loading = false;
-        state.data = action.payload.data;
+        // Merge so that detail pages don't wipe the dashboard list
+        state.data = { ...state.data, ...action.payload.data };
         state.lastUpdated = action.payload.timestamp;
         state.error = null;
       })
       .addCase(fetchCryptoData.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.payload as string;
-        if (Object.keys(state.data).length === 0) {
-          state.data = {};
-        }
+        state.error = (action.payload as string) || 'Failed to fetch crypto data';
       });
   },
 });

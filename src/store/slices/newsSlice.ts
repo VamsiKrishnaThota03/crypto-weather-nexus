@@ -1,7 +1,7 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import axios from 'axios';
 
-interface NewsItem {
+export interface NewsItem {
   title: string;
   description: string;
   url: string;
@@ -21,31 +21,15 @@ const initialState: NewsState = {
   error: null,
 };
 
-export const fetchNewsData = createAsyncThunk(
-  'news/fetchNewsData',
-  async (_, { rejectWithValue }) => {
-    try {
-      const response = await axios.get(
-        'https://min-api.cryptocompare.com/data/v2/news/?lang=EN'
-      );
-
-      if (!response.data.Data) {
-        throw new Error('No news data available');
-      }
-
-      return response.data.Data.slice(0, 5).map((item: any) => ({
-        title: item.title,
-        description: item.body || 'No description available',
-        url: item.url,
-        source: item.source,
-        publishedAt: new Date(item.published_on * 1000).toISOString(),
-      }));
-    } catch (error: any) {
-      console.error('News API Error:', error.message);
-      return rejectWithValue('Failed to fetch news data. Please try again later.');
-    }
+export const fetchNewsData = createAsyncThunk('news/fetchNewsData', async (_, { rejectWithValue }) => {
+  try {
+    const response = await axios.get<NewsItem[]>('/api/news');
+    if (!Array.isArray(response.data)) throw new Error('Invalid news response');
+    return response.data;
+  } catch {
+    return rejectWithValue('Failed to fetch news. Please try again later.');
   }
-);
+});
 
 const newsSlice = createSlice({
   name: 'news',
@@ -55,10 +39,10 @@ const newsSlice = createSlice({
     builder
       .addCase(fetchNewsData.pending, (state) => {
         state.loading = true;
-        state.error = null;
       })
       .addCase(fetchNewsData.fulfilled, (state, action) => {
         state.loading = false;
+        state.error = null;
         state.items = action.payload;
       })
       .addCase(fetchNewsData.rejected, (state, action) => {
@@ -68,4 +52,4 @@ const newsSlice = createSlice({
   },
 });
 
-export default newsSlice.reducer; 
+export default newsSlice.reducer;
