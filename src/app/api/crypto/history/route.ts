@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { ALLOWED_HISTORY_DAYS, isValidCoinId } from '@/lib/validation';
+import { rateLimitGuard } from '@/lib/server/rateLimit';
 
 export const dynamic = 'force-dynamic';
 
@@ -8,6 +9,10 @@ const cache = new Map<string, { data: unknown; timestamp: number }>();
 
 /** Returns CoinGecko's market_chart payload: { prices: [timestamp, price][], ... } */
 export async function GET(request: Request) {
+  // A blocked request must never reach the upstream API — that is what
+  // protects the quota (and, for CoinGecko, the server's own IP reputation).
+  const blocked = rateLimitGuard(request);
+  if (blocked) return blocked;
   const { searchParams } = new URL(request.url);
   const id = searchParams.get('id') ?? searchParams.get('ids');
   const days = searchParams.get('days') || '7';

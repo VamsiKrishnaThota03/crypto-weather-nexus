@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { rateLimitGuard } from '@/lib/server/rateLimit';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,7 +16,12 @@ interface CryptoCompareItem {
 }
 
 /** Latest crypto headlines from the CryptoCompare news API (no key required). */
-export async function GET() {
+export async function GET(request: Request) {
+  // A blocked request must never reach CryptoCompare — that is what protects
+  // the quota (and the server's own IP reputation on a keyless endpoint).
+  const blocked = rateLimitGuard(request);
+  if (blocked) return blocked;
+
   if (cache && Date.now() - cache.timestamp < CACHE_DURATION) {
     return NextResponse.json(cache.data);
   }

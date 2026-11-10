@@ -8,6 +8,10 @@ A Next.js dashboard that combines live cryptocurrency prices, current weather fo
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind%20CSS-3-06B6D4?logo=tailwindcss&logoColor=white)
 ![Jest](https://img.shields.io/badge/tests-Jest-C21325?logo=jest&logoColor=white)
 
+[![CI](https://github.com/VamsiKrishnaThota03/crypto-weather-nexus/actions/workflows/ci.yml/badge.svg)](https://github.com/VamsiKrishnaThota03/crypto-weather-nexus/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/VamsiKrishnaThota03/crypto-weather-nexus/actions/workflows/codeql.yml/badge.svg)](https://github.com/VamsiKrishnaThota03/crypto-weather-nexus/actions/workflows/codeql.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 ## Live demo
 
 **https://crypto-weather-nexus-eta.vercel.app**
@@ -132,3 +136,77 @@ OPENWEATHER_API_KEY=<your-openweathermap-api-key>
 - [CoinGecko](https://www.coingecko.com/) for cryptocurrency data
 - [OpenWeatherMap](https://openweathermap.org/) for weather data
 - [CryptoCompare](https://www.cryptocompare.com/) for news
+
+
+## Protecting the upstream APIs
+
+All four upstream calls go through this app's own route handlers, and the
+OpenWeatherMap key is read server-side only. CI proves the key never reaches the
+browser: it builds with a known placeholder and then greps `.next/static` for
+it, so a `NEXT_PUBLIC_` prefix or a stray import of server code into a client
+component would fail the build.
+
+Hiding a key stops it being *stolen*. It does not stop it being *spent*, and
+that was the gap here — the deployed app is the key, so anyone who found the URL
+could have called `/api/weather` in a loop and burned the free tier's 1,000
+calls a day. There is a second version of the same problem on the keyless
+endpoints: CoinGecko and CryptoCompare rate limit **by IP**, so an unthrottled
+proxy gets the *server's* IP throttled and breaks the dashboard for every user
+at once, not just the abuser.
+
+All four handlers are now rate limited per caller (30 requests/minute), and the
+guard is the first statement in each one — so a blocked request never reaches
+the upstream API, which is the whole point.
+
+`clientKey()` reads the **first** `x-forwarded-for` entry, not the last. That
+detail separates a working limit from a decorative one: Vercel appends the real
+client first, so reading the last would let a caller send their own header and
+pick a fresh bucket at will. There is a test for it, and for the fact that the
+function never returns an empty key (which would merge every such caller into a
+single shared bucket).
+
+The counter is an in-process fixed window, and the trade-off is stated rather
+than hidden: serverless instances do not share memory, so the effective limit is
+per instance and a burst spread across cold starts can exceed it. For protecting
+free quotas on a demo that is the right size of solution; a hard global limit
+would need Redis or Vercel KV.
+
+## Security headers
+
+`next.config.js` now sets a CSP plus `nosniff`,
+`strict-origin-when-cross-origin`, `X-Frame-Options: DENY`, HSTS and a
+`Permissions-Policy` denying camera, microphone and geolocation.
+`poweredByHeader` is off.
+
+`script-src` has to include `'unsafe-inline'` because Next injects inline
+bootstrap scripts; removing it would need a nonce threaded through the document
+via middleware. That is documented in the config rather than glossed over.
+`connect-src` is `'self'` only, since the browser never calls an upstream API
+directly; `img-src` allows the OpenWeatherMap icon CDN, CryptoCompare article
+images and CoinGecko assets.
+
+## Tests
+
+```bash
+npm test
+npm run test:coverage
+```
+
+26 tests. The 14 that existed covered validation, the favourites slice and the
+live-update service. The 12 added cover the limiter: counting, per-caller
+isolation, window reset, `retryAfter` never rounding to 0 while blocked, the
+`x-forwarded-for` ordering, the never-empty key, and `rateLimitGuard` returning
+a JSON 429 with `Retry-After` while leaving other callers alone.
+
+That suite carries a `@jest-environment node` docblock — the default jsdom
+environment provides `Headers` but not `Request`/`Response`, and route-handler
+code runs server-side anyway, so node is also the more faithful environment.
+
+## Continuous integration
+
+| Job | What it proves |
+| --- | --- |
+| `test` (Node 20, 22) | ESLint, `tsc --noEmit`, 26 tests, plus coverage on 20 |
+| `build` | A production build; that the API key is absent from `.next/static`; and that the security headers are still present in `next.config.js` |
+
+CodeQL runs weekly and on every push; Dependabot groups weekly patch/minor bumps.

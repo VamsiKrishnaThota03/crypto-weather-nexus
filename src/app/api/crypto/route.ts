@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { parseCoinIds } from '@/lib/validation';
+import { rateLimitGuard } from '@/lib/server/rateLimit';
 
 export const dynamic = 'force-dynamic';
 
@@ -28,6 +29,10 @@ async function fetchWithRetry(url: string, retries = MAX_RETRIES): Promise<Respo
 }
 
 export async function GET(request: NextRequest) {
+  // A blocked request must never reach the upstream API — that is what
+  // protects the quota (and, for CoinGecko, the server's own IP reputation).
+  const blocked = rateLimitGuard(request);
+  if (blocked) return blocked;
   const ids = parseCoinIds(request.nextUrl.searchParams.get('ids'));
   if (!ids) {
     return NextResponse.json({ error: 'Missing or invalid ids parameter' }, { status: 400 });

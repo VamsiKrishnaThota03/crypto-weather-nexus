@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { isValidCity } from '@/lib/validation';
+import { rateLimitGuard } from '@/lib/server/rateLimit';
 
 export const dynamic = 'force-dynamic';
 
@@ -7,6 +8,10 @@ const cache = new Map<string, { data: unknown; timestamp: number }>();
 const WEATHER_CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
 export async function GET(request: Request) {
+  // A blocked request must never reach the upstream API — that is what
+  // protects the quota (and, for CoinGecko, the server's own IP reputation).
+  const blocked = rateLimitGuard(request);
+  if (blocked) return blocked;
   const { searchParams } = new URL(request.url);
   const city = searchParams.get('city');
 
